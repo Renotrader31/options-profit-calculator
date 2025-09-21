@@ -1,0 +1,237 @@
+/* Custom CSS for Options Profit Calculator */
+
+/* Smooth transitions for interactive elements */
+* {
+    transition: all 0.2s ease-in-out;
+}
+
+/* Custom scrollbar styling */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+}
+
+/* Form input enhancements */
+input[type="number"]:focus,
+select:focus {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    border-color: #3B82F6;
+}
+
+/* Button hover effects */
+.btn-primary {
+    background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);
+    box-shadow: 0 4px 14px 0 rgba(59, 130, 246, 0.39);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px 0 rgba(59, 130, 246, 0.5);
+}
+
+/* Chart container styling */
+.chart-container {
+    position: relative;
+    height: 400px;
+    width: 100%;
+}
+
+/* Options leg styling */
+.options-leg {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+    background: #fafafa;
+    transition: all 0.3s ease;
+}
+
+.options-leg:hover {
+    border-color: #3B82F6;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+}
+
+.options-leg.active {
+    border-color: #3B82F6;
+    background: rgba(59, 130, 246, 0.05);
+}
+
+/* Strategy description styling */
+.strategy-description {
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    border-left: 4px solid #3B82F6;
+}
+
+/* Profit/Loss indicators */
+.profit-positive {
+    color: #10B981;
+    font-weight: 600;
+}
+
+.profit-negative {
+    color: #EF4444;
+    font-weight: 600;
+}
+
+.profit-neutral {
+    color: #F59E0B;
+    font-weight: 600;
+}
+
+/* Animation for loading states */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.loading {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Responsive table styling */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Custom tooltip styling for charts */
+.chartjs-tooltip {
+    opacity: 1;
+    position: absolute;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    border-radius: 6px;
+    pointer-events: none;
+    transform: translate(-50%, 0);
+    transition: all 0.1s ease;
+    padding: 8px 12px;
+    font-size: 12px;
+    z-index: 1000;
+}
+
+/* Risk indicator styling */
+.risk-low {
+    color: #10B981;
+    background-color: rgba(16, 185, 129, 0.1);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.risk-medium {
+    color: #F59E0B;
+    background-color: rgba(245, 158, 11, 0.1);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.risk-high {
+    color: #EF4444;
+    background-color: rgba(239, 68, 68, 0.1);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+    .chart-container {
+        height: 300px;
+    }
+    
+    .options-leg {
+        padding: 12px;
+    }
+    
+    .grid-cols-1.md\\:grid-cols-3 {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Print styles */
+@media print {
+    .no-print {
+        display: none;
+    }
+    
+    body {
+        background: white;
+    }
+    
+    .bg-white {
+        box-shadow: none;
+    }
+}
+
+/* Focus styles for accessibility */
+button:focus,
+input:focus,
+select:focus {
+    outline: 2px solid #3B82F6;
+    outline-offset: 2px;
+}
+
+/* Dark mode support (if needed in future) */
+@media (prefers-color-scheme: dark) {
+    .dark-mode {
+        background-color: #1f2937;
+        color: #f9fafb;
+    }
+}
+
+/* Custom animations for value changes */
+.value-change {
+    animation: highlight 0.6s ease-in-out;
+}
+
+@keyframes highlight {
+    0% {
+        background-color: rgba(59, 130, 246, 0.2);
+    }
+    100% {
+        background-color: transparent;
+    }
+}
+
+/* Strategy complexity indicators */
+.complexity-beginner {
+    background: linear-gradient(90deg, #10B981, #34D399);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 600;
+}
+
+.complexity-intermediate {
+    background: linear-gradient(90deg, #F59E0B, #FBBF24);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 600;
+}
+
+.complexity-advanced {
+    background: linear-gradient(90deg, #EF4444, #F87171);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 600;
+}
