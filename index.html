@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Options Profit Calculator</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js for interactive charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+    
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'inter': ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'primary': '#3B82F6',
+                        'secondary': '#1F2937',
+                        'success': '#10B981',
+                        'danger': '#EF4444',
+                        'warning': '#F59E0B',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="font-inter bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-chart-line text-2xl text-primary"></i>
+                    <h1 class="text-2xl font-bold text-gray-900">Options Profit Calculator</h1>
+                </div>
+                <div class="text-sm text-gray-500">
+                    Analyze your options strategies
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <!-- Strategy Selection & Input Panel -->
+            <div class="lg:col-span-4">
+                <div class="bg-white rounded-lg shadow-sm border p-6 sticky top-8">
+                    <!-- Strategy Selection -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-semibold text-gray-700 mb-3">
+                            <i class="fas fa-cog mr-2"></i>Select Strategy
+                        </label>
+                        <select id="strategySelect" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                            <option value="long-call">Long Call</option>
+                            <option value="long-put">Long Put</option>
+                            <option value="short-call">Short Call</option>
+                            <option value="short-put">Short Put</option>
+                            <option value="bull-call-spread">Bull Call Spread</option>
+                            <option value="bear-call-spread">Bear Call Spread</option>
+                            <option value="bull-put-spread">Bull Put Spread</option>
+                            <option value="bear-put-spread">Bear Put Spread</option>
+                            <option value="long-straddle">Long Straddle</option>
+                            <option value="short-straddle">Short Straddle</option>
+                            <option value="long-strangle">Long Strangle</option>
+                            <option value="short-strangle">Short Strangle</option>
+                            <option value="iron-condor">Iron Condor</option>
+                            <option value="butterfly">Butterfly Spread</option>
+                            <option value="covered-call">Covered Call</option>
+                            <option value="protective-put">Protective Put</option>
+                        </select>
+                    </div>
+
+                    <!-- Strategy Description -->
+                    <div id="strategyDescription" class="mb-6 p-4 bg-blue-50 rounded-lg">
+                        <h3 class="font-semibold text-blue-900 mb-2">Strategy Overview</h3>
+                        <p class="text-sm text-blue-800" id="strategyText">
+                            Select a strategy to see its description and risk profile.
+                        </p>
+                    </div>
+
+                    <!-- Market Parameters -->
+                    <div class="space-y-4 mb-6">
+                        <h3 class="text-lg font-semibold text-gray-800 border-b pb-2">
+                            <i class="fas fa-chart-area mr-2"></i>Market Parameters
+                        </h3>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Current Stock Price ($)</label>
+                            <input type="number" id="currentPrice" value="100" step="0.01" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Volatility (%)</label>
+                            <input type="number" id="volatility" value="25" step="0.1" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Risk-Free Rate (%)</label>
+                            <input type="number" id="riskFreeRate" value="5" step="0.1" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Days to Expiration</label>
+                            <input type="number" id="daysToExpiration" value="30" min="1" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                        </div>
+                    </div>
+
+                    <!-- Options Legs Container -->
+                    <div id="optionsLegs" class="space-y-4">
+                        <!-- Dynamic options legs will be inserted here -->
+                    </div>
+
+                    <!-- Calculate Button -->
+                    <button id="calculateBtn" class="w-full mt-6 bg-primary text-white py-3 px-4 rounded-md hover:bg-blue-600 transition-colors font-semibold">
+                        <i class="fas fa-calculator mr-2"></i>Calculate Profit/Loss
+                    </button>
+                </div>
+            </div>
+
+            <!-- Results Panel -->
+            <div class="lg:col-span-8">
+                <!-- Key Metrics Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div class="bg-white p-4 rounded-lg shadow-sm border">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-600">Max Profit</p>
+                                <p id="maxProfit" class="text-2xl font-bold text-success">$0</p>
+                            </div>
+                            <i class="fas fa-arrow-up text-success text-xl"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white p-4 rounded-lg shadow-sm border">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-600">Max Loss</p>
+                                <p id="maxLoss" class="text-2xl font-bold text-danger">$0</p>
+                            </div>
+                            <i class="fas fa-arrow-down text-danger text-xl"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white p-4 rounded-lg shadow-sm border">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm text-gray-600">Breakeven</p>
+                                <p id="breakeven" class="text-2xl font-bold text-warning">$0</p>
+                            </div>
+                            <i class="fas fa-equals text-warning text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Profit/Loss Chart -->
+                <div class="bg-white rounded-lg shadow-sm border p-6 mb-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-800">
+                            <i class="fas fa-chart-line mr-2"></i>Profit/Loss Chart
+                        </h3>
+                        <div class="flex space-x-2">
+                            <button id="toggleExpiry" class="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors">
+                                At Expiry
+                            </button>
+                            <button id="toggleCurrent" class="px-3 py-1 text-sm bg-primary text-white rounded hover:bg-blue-600 transition-colors">
+                                Current Value
+                            </button>
+                        </div>
+                    </div>
+                    <div style="height: 400px;">
+                        <canvas id="profitChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Strategy Details Table -->
+                <div class="bg-white rounded-lg shadow-sm border p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                        <i class="fas fa-table mr-2"></i>Strategy Details
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table id="strategyTable" class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leg</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Strike</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Premium</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                                </tr>
+                            </thead>
+                            <tbody id="strategyTableBody" class="bg-white divide-y divide-gray-200">
+                                <!-- Table rows will be populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="text-center text-sm text-gray-500">
+                <p>&copy; 2024 Options Profit Calculator. Built for educational purposes.</p>
+                <p class="mt-1">Calculations are estimates. Always consult with a financial advisor for investment decisions.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JavaScript Files -->
+    <script src="js/blackScholes.js"></script>
+    <script src="js/optionsStrategies.js"></script>
+    <script src="js/chartManager.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
