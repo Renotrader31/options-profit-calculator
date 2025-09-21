@@ -1,37 +1,24 @@
 {
   "name": "options-profit-calculator",
   "version": "1.0.0",
-  "description": "A comprehensive options profit calculator with support for all major trading strategies",
+  "description": "Professional options profit calculator with Black-Scholes pricing and strategy analysis",
   "main": "index.html",
   "scripts": {
-    "dev": "npx serve .",
-    "build": "echo 'Static site - no build required'",
-    "start": "npx serve .",
-    "test": "echo 'No tests specified'"
+    "dev": "npx http-server . -p 3000",
+    "build": "echo 'Static site - no build needed'",
+    "deploy": "vercel --prod"
   },
   "keywords": [
     "options",
     "trading",
-    "profit",
-    "calculator",
     "finance",
     "black-scholes",
-    "options-strategies"
+    "profit-calculator",
+    "derivatives"
   ],
-  "author": "Options Calculator Team",
+  "author": "Your Name",
   "license": "MIT",
   "devDependencies": {
-    "serve": "^14.2.1"
-  },
-  "engines": {
-    "node": ">=14"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/yourusername/options-profit-calculator.git"
-  },
-  "bugs": {
-    "url": "https://github.com/yourusername/options-profit-calculator/issues"
-  },
-  "homepage": "https://options-profit-calculator.vercel.app"
+    "http-server": "^14.1.1"
+  }
 }
