@@ -1,447 +1,326 @@
-/**
- * Options Strategies Implementation
- * Handles all major options trading strategies and their profit/loss calculations
- */
+// Options Strategies Definitions and Calculations
 
 class OptionsStrategies {
-    /**
-     * Strategy definitions with their parameters and descriptions
-     */
-    static strategies = {
-        'long-call': {
-            name: 'Long Call',
-            description: 'Buy a call option. Bullish strategy with unlimited upside potential and limited downside risk.',
-            complexity: 'beginner',
-            riskLevel: 'low',
-            legs: [
-                { action: 'buy', type: 'call', quantity: 1 }
-            ]
-        },
-        'long-put': {
-            name: 'Long Put',
-            description: 'Buy a put option. Bearish strategy with high profit potential and limited downside risk.',
-            complexity: 'beginner',
-            riskLevel: 'low',
-            legs: [
-                { action: 'buy', type: 'put', quantity: 1 }
-            ]
-        },
-        'short-call': {
-            name: 'Short Call',
-            description: 'Sell a call option. Bearish/neutral strategy with limited profit and unlimited risk.',
-            complexity: 'intermediate',
-            riskLevel: 'high',
-            legs: [
-                { action: 'sell', type: 'call', quantity: 1 }
-            ]
-        },
-        'short-put': {
-            name: 'Short Put',
-            description: 'Sell a put option. Bullish/neutral strategy with limited profit and high risk.',
-            complexity: 'intermediate',
-            riskLevel: 'high',
-            legs: [
-                { action: 'sell', type: 'put', quantity: 1 }
-            ]
-        },
-        'bull-call-spread': {
-            name: 'Bull Call Spread',
-            description: 'Buy lower strike call, sell higher strike call. Limited risk and limited reward bullish strategy.',
-            complexity: 'intermediate',
-            riskLevel: 'medium',
-            legs: [
-                { action: 'buy', type: 'call', quantity: 1, strikeOffset: 0 },
-                { action: 'sell', type: 'call', quantity: 1, strikeOffset: 5 }
-            ]
-        },
-        'bear-call-spread': {
-            name: 'Bear Call Spread',
-            description: 'Sell lower strike call, buy higher strike call. Limited risk and limited reward bearish strategy.',
-            complexity: 'intermediate',
-            riskLevel: 'medium',
-            legs: [
-                { action: 'sell', type: 'call', quantity: 1, strikeOffset: 0 },
-                { action: 'buy', type: 'call', quantity: 1, strikeOffset: 5 }
-            ]
-        },
-        'bull-put-spread': {
-            name: 'Bull Put Spread',
-            description: 'Sell higher strike put, buy lower strike put. Limited risk and limited reward bullish strategy.',
-            complexity: 'intermediate',
-            riskLevel: 'medium',
-            legs: [
-                { action: 'sell', type: 'put', quantity: 1, strikeOffset: 0 },
-                { action: 'buy', type: 'put', quantity: 1, strikeOffset: -5 }
-            ]
-        },
-        'bear-put-spread': {
-            name: 'Bear Put Spread',
-            description: 'Buy higher strike put, sell lower strike put. Limited risk and limited reward bearish strategy.',
-            complexity: 'intermediate',
-            riskLevel: 'medium',
-            legs: [
-                { action: 'buy', type: 'put', quantity: 1, strikeOffset: 0 },
-                { action: 'sell', type: 'put', quantity: 1, strikeOffset: -5 }
-            ]
-        },
-        'long-straddle': {
-            name: 'Long Straddle',
-            description: 'Buy call and put at same strike. Profits from high volatility in either direction.',
-            complexity: 'intermediate',
-            riskLevel: 'medium',
-            legs: [
-                { action: 'buy', type: 'call', quantity: 1 },
-                { action: 'buy', type: 'put', quantity: 1 }
-            ]
-        },
-        'short-straddle': {
-            name: 'Short Straddle',
-            description: 'Sell call and put at same strike. Profits from low volatility but has unlimited risk.',
-            complexity: 'advanced',
-            riskLevel: 'high',
-            legs: [
-                { action: 'sell', type: 'call', quantity: 1 },
-                { action: 'sell', type: 'put', quantity: 1 }
-            ]
-        },
-        'long-strangle': {
-            name: 'Long Strangle',
-            description: 'Buy call and put at different strikes. Profits from high volatility, lower cost than straddle.',
-            complexity: 'intermediate',
-            riskLevel: 'medium',
-            legs: [
-                { action: 'buy', type: 'call', quantity: 1, strikeOffset: 5 },
-                { action: 'buy', type: 'put', quantity: 1, strikeOffset: -5 }
-            ]
-        },
-        'short-strangle': {
-            name: 'Short Strangle',
-            description: 'Sell call and put at different strikes. Profits from low volatility, unlimited risk.',
-            complexity: 'advanced',
-            riskLevel: 'high',
-            legs: [
-                { action: 'sell', type: 'call', quantity: 1, strikeOffset: 5 },
-                { action: 'sell', type: 'put', quantity: 1, strikeOffset: -5 }
-            ]
-        },
-        'iron-condor': {
-            name: 'Iron Condor',
-            description: 'Sell call spread and put spread. Profits from low volatility with defined risk.',
-            complexity: 'advanced',
-            riskLevel: 'medium',
-            legs: [
-                { action: 'buy', type: 'put', quantity: 1, strikeOffset: -10 },
-                { action: 'sell', type: 'put', quantity: 1, strikeOffset: -5 },
-                { action: 'sell', type: 'call', quantity: 1, strikeOffset: 5 },
-                { action: 'buy', type: 'call', quantity: 1, strikeOffset: 10 }
-            ]
-        },
-        'butterfly': {
-            name: 'Butterfly Spread',
-            description: 'Buy two options at outer strikes, sell two at middle strike. Low risk, low reward.',
-            complexity: 'advanced',
-            riskLevel: 'low',
-            legs: [
-                { action: 'buy', type: 'call', quantity: 1, strikeOffset: -5 },
-                { action: 'sell', type: 'call', quantity: 2, strikeOffset: 0 },
-                { action: 'buy', type: 'call', quantity: 1, strikeOffset: 5 }
-            ]
-        },
-        'covered-call': {
-            name: 'Covered Call',
-            description: 'Own 100 shares and sell a call. Conservative income strategy with limited upside.',
-            complexity: 'beginner',
-            riskLevel: 'low',
-            legs: [
-                { action: 'own', type: 'stock', quantity: 100 },
-                { action: 'sell', type: 'call', quantity: 1 }
-            ]
-        },
-        'protective-put': {
-            name: 'Protective Put',
-            description: 'Own 100 shares and buy a put. Insurance strategy to protect against downside.',
-            complexity: 'beginner',
-            riskLevel: 'low',
-            legs: [
-                { action: 'own', type: 'stock', quantity: 100 },
-                { action: 'buy', type: 'put', quantity: 1 }
-            ]
-        }
-    };
-
-    /**
-     * Get strategy configuration
-     * @param {string} strategyKey - Strategy identifier
-     * @returns {Object} - Strategy configuration
-     */
-    static getStrategy(strategyKey) {
-        return this.strategies[strategyKey] || null;
+    constructor() {
+        this.blackScholes = new BlackScholes();
+        this.strategies = {
+            'long-call': {
+                name: 'Long Call',
+                description: 'Bullish strategy. Buy a call option expecting the stock price to rise above the strike price.',
+                riskLevel: 'Low',
+                complexity: 'Beginner',
+                legs: [
+                    { action: 'Buy', type: 'Call', defaultStrike: 0, defaultPremium: 0, quantity: 1 }
+                ]
+            },
+            'long-put': {
+                name: 'Long Put',
+                description: 'Bearish strategy. Buy a put option expecting the stock price to fall below the strike price.',
+                riskLevel: 'Low',
+                complexity: 'Beginner',
+                legs: [
+                    { action: 'Buy', type: 'Put', defaultStrike: 0, defaultPremium: 0, quantity: 1 }
+                ]
+            },
+            'short-call': {
+                name: 'Short Call',
+                description: 'Bearish strategy. Sell a call option expecting the stock price to stay below the strike price.',
+                riskLevel: 'High',
+                complexity: 'Intermediate',
+                legs: [
+                    { action: 'Sell', type: 'Call', defaultStrike: 0, defaultPremium: 0, quantity: 1 }
+                ]
+            },
+            'short-put': {
+                name: 'Short Put',
+                description: 'Bullish strategy. Sell a put option expecting the stock price to stay above the strike price.',
+                riskLevel: 'High',
+                complexity: 'Intermediate',
+                legs: [
+                    { action: 'Sell', type: 'Put', defaultStrike: 0, defaultPremium: 0, quantity: 1 }
+                ]
+            },
+            'long-straddle': {
+                name: 'Long Straddle',
+                description: 'Neutral strategy expecting high volatility. Buy both call and put at the same strike price.',
+                riskLevel: 'Medium',
+                complexity: 'Intermediate',
+                legs: [
+                    { action: 'Buy', type: 'Call', defaultStrike: 0, defaultPremium: 0, quantity: 1 },
+                    { action: 'Buy', type: 'Put', defaultStrike: 0, defaultPremium: 0, quantity: 1 }
+                ]
+            },
+            'short-straddle': {
+                name: 'Short Straddle',
+                description: 'Neutral strategy expecting low volatility. Sell both call and put at the same strike price.',
+                riskLevel: 'High',
+                complexity: 'Advanced',
+                legs: [
+                    { action: 'Sell', type: 'Call', defaultStrike: 0, defaultPremium: 0, quantity: 1 },
+                    { action: 'Sell', type: 'Put', defaultStrike: 0, defaultPremium: 0, quantity: 1 }
+                ]
+            },
+            'long-strangle': {
+                name: 'Long Strangle',
+                description: 'Neutral strategy expecting high volatility. Buy call and put at different strike prices.',
+                riskLevel: 'Medium',
+                complexity: 'Intermediate',
+                legs: [
+                    { action: 'Buy', type: 'Call', defaultStrike: 0, defaultPremium: 0, quantity: 1 },
+                    { action: 'Buy', type: 'Put', defaultStrike: 0, defaultPremium: 0, quantity: 1 }
+                ]
+            },
+            'short-strangle': {
+                name: 'Short Strangle',
+                description: 'Neutral strategy expecting low volatility. Sell call and put at different strike prices.',
+                riskLevel: 'High',
+                complexity: 'Advanced',
+                legs: [
+                    { action: 'Sell', type: 'Call', defaultStrike: 0, defaultPremium: 0, quantity: 1 },
+                    { action: 'Sell', type: 'Put', defaultStrike: 0, defaultPremium: 0, quantity: 1 }
+                ]
+            },
+            'bull-call-spread': {
+                name: 'Bull Call Spread',
+                description: 'Moderately bullish strategy. Buy lower strike call, sell higher strike call.',
+                riskLevel: 'Medium',
+                complexity: 'Intermediate',
+                legs: [
+                    { action: 'Buy', type: 'Call', defaultStrike: 0, defaultPremium: 0, quantity: 1 },
+                    { action: 'Sell', type: 'Call', defaultStrike: 0, defaultPremium: 0, quantity: 1 }
+                ]
+            },
+            'bear-call-spread': {
+                name: 'Bear Call Spread',
+                description: 'Moderately bearish strategy. Sell lower strike call, buy higher strike call.',
+                riskLevel: 'Medium',
+                complexity: 'Intermediate',
+                legs: [
+                    { action: 'Sell', type: 'Call', defaultStrike: 0, defaultPremium: 0, quantity: 1 },
+                    { action: 'Buy', type: 'Call', defaultStrike: 0, defaultPremium: 0, quantity: 1 }
+                ]
+            },
+            'bull-put-spread': {
+                name: 'Bull Put Spread',
+                description: 'Moderately bullish strategy. Sell higher strike put, buy lower strike put.',
+                riskLevel: 'Medium',
+                complexity: 'Intermediate',
+                legs: [
+                    { action: 'Sell', type: 'Put', defaultStrike: 0, defaultPremium: 0, quantity: 1 },
+                    { action: 'Buy', type: 'Put', defaultStrike: 0, defaultPremium: 0, quantity: 1 }
+                ]
+            },
+            'bear-put-spread': {
+                name: 'Bear Put Spread',
+                description: 'Moderately bearish strategy. Buy higher strike put, sell lower strike put.',
+                riskLevel: 'Medium',
+                complexity: 'Intermediate',
+                legs: [
+                    { action: 'Buy', type: 'Put', defaultStrike: 0, defaultPremium: 0, quantity: 1 },
+                    { action: 'Sell', type: 'Put', defaultStrike: 0, defaultPremium: 0, quantity: 1 }
+                ]
+            }
+        };
     }
 
-    /**
-     * Calculate profit/loss for a strategy at a given stock price
-     * @param {Object} strategy - Strategy configuration
-     * @param {Array} legs - Array of option legs with strikes and premiums
-     * @param {number} stockPrice - Stock price to evaluate
-     * @param {number} timeToExpiry - Time to expiry (0 for expiration, > 0 for current value)
-     * @returns {number} - Total profit/loss
-     */
-    static calculateProfitLoss(strategy, legs, stockPrice, timeToExpiry = 0) {
-        let totalPL = 0;
+    getStrategy(strategyKey) {
+        return this.strategies[strategyKey];
+    }
 
-        legs.forEach((leg, index) => {
-            const strategyLeg = strategy.legs[index];
-            if (!strategyLeg) return;
+    getAllStrategies() {
+        return this.strategies;
+    }
 
-            let legPL = 0;
+    // Set default strikes based on current stock price
+    setDefaultStrikes(strategyKey, currentPrice) {
+        const strategy = this.strategies[strategyKey];
+        if (!strategy) return strategy;
 
-            if (strategyLeg.type === 'stock') {
-                // Stock position
-                if (strategyLeg.action === 'own') {
-                    legPL = (stockPrice - leg.costBasis) * strategyLeg.quantity;
+        const updatedStrategy = JSON.parse(JSON.stringify(strategy)); // Deep clone
+
+        switch (strategyKey) {
+            case 'long-call':
+            case 'short-call':
+                updatedStrategy.legs[0].defaultStrike = Math.round(currentPrice * 1.05);
+                break;
+                
+            case 'long-put':
+            case 'short-put':
+                updatedStrategy.legs[0].defaultStrike = Math.round(currentPrice * 0.95);
+                break;
+                
+            case 'long-straddle':
+            case 'short-straddle':
+                updatedStrategy.legs[0].defaultStrike = Math.round(currentPrice);
+                updatedStrategy.legs[1].defaultStrike = Math.round(currentPrice);
+                break;
+                
+            case 'long-strangle':
+            case 'short-strangle':
+                updatedStrategy.legs[0].defaultStrike = Math.round(currentPrice * 1.05); // Call
+                updatedStrategy.legs[1].defaultStrike = Math.round(currentPrice * 0.95); // Put
+                break;
+                
+            case 'bull-call-spread':
+                updatedStrategy.legs[0].defaultStrike = Math.round(currentPrice * 1.02); // Buy lower
+                updatedStrategy.legs[1].defaultStrike = Math.round(currentPrice * 1.08); // Sell higher
+                break;
+                
+            case 'bear-call-spread':
+                updatedStrategy.legs[0].defaultStrike = Math.round(currentPrice * 1.02); // Sell lower
+                updatedStrategy.legs[1].defaultStrike = Math.round(currentPrice * 1.08); // Buy higher
+                break;
+                
+            case 'bull-put-spread':
+                updatedStrategy.legs[0].defaultStrike = Math.round(currentPrice * 0.95); // Sell higher
+                updatedStrategy.legs[1].defaultStrike = Math.round(currentPrice * 0.90); // Buy lower
+                break;
+                
+            case 'bear-put-spread':
+                updatedStrategy.legs[0].defaultStrike = Math.round(currentPrice * 0.95); // Buy higher
+                updatedStrategy.legs[1].defaultStrike = Math.round(currentPrice * 0.90); // Sell lower
+                break;
+        }
+
+        return updatedStrategy;
+    }
+
+    // Calculate profit/loss for a single leg
+    calculateLegPL(leg, spotPrices, marketParams) {
+        const { strike, premium, quantity, action, type } = leg;
+        const { riskFreeRate, timeToExpiration, volatility } = marketParams;
+        
+        return spotPrices.map(spotPrice => {
+            let optionValue;
+            
+            if (timeToExpiration <= 0) {
+                // At expiration
+                if (type === 'Call') {
+                    optionValue = Math.max(spotPrice - strike, 0);
+                } else {
+                    optionValue = Math.max(strike - spotPrice, 0);
                 }
             } else {
-                // Options position
-                let optionValue = 0;
-
-                if (timeToExpiry === 0) {
-                    // At expiration - intrinsic value only
-                    if (strategyLeg.type === 'call') {
-                        optionValue = Math.max(stockPrice - leg.strike, 0);
-                    } else {
-                        optionValue = Math.max(leg.strike - stockPrice, 0);
-                    }
-                } else {
-                    // Current value using Black-Scholes
-                    optionValue = BlackScholes.getOptionPrice({
-                        type: strategyLeg.type,
-                        strike: leg.strike,
-                        timeToExpiry: timeToExpiry,
-                        riskFreeRate: leg.riskFreeRate || 0.05,
-                        volatility: leg.volatility || 0.25
-                    }, stockPrice, timeToExpiry);
-                }
-
-                if (strategyLeg.action === 'buy') {
-                    legPL = (optionValue - leg.premium) * strategyLeg.quantity * 100;
-                } else if (strategyLeg.action === 'sell') {
-                    legPL = (leg.premium - optionValue) * strategyLeg.quantity * 100;
-                }
+                // Before expiration - use Black-Scholes
+                const isCall = type === 'Call';
+                optionValue = isCall ? 
+                    this.blackScholes.calculateCallPrice(spotPrice, strike, riskFreeRate, timeToExpiration, volatility) :
+                    this.blackScholes.calculatePutPrice(spotPrice, strike, riskFreeRate, timeToExpiration, volatility);
             }
-
-            totalPL += legPL;
+            
+            let legPL;
+            if (action === 'Buy') {
+                legPL = (optionValue - premium) * quantity * 100; // *100 for contract multiplier
+            } else { // Sell
+                legPL = (premium - optionValue) * quantity * 100; // *100 for contract multiplier
+            }
+            
+            return legPL;
         });
+    }
 
+    // Calculate total P&L for entire strategy
+    calculateStrategyPL(legs, spotPrices, marketParams) {
+        if (!legs || legs.length === 0) return spotPrices.map(() => 0);
+        
+        const totalPL = spotPrices.map(() => 0);
+        
+        legs.forEach(leg => {
+            if (leg.strike && leg.premium !== null && leg.quantity) {
+                const legPLs = this.calculateLegPL(leg, spotPrices, marketParams);
+                legPLs.forEach((pl, index) => {
+                    totalPL[index] += pl;
+                });
+            }
+        });
+        
         return totalPL;
     }
 
-    /**
-     * Calculate profit/loss for multiple stock prices
-     * @param {Object} strategy - Strategy configuration
-     * @param {Array} legs - Array of option legs
-     * @param {Array} stockPrices - Array of stock prices
-     * @param {number} timeToExpiry - Time to expiry
-     * @returns {Array} - Array of profit/loss values
-     */
-    static calculateProfitLossArray(strategy, legs, stockPrices, timeToExpiry = 0) {
-        return stockPrices.map(price => this.calculateProfitLoss(strategy, legs, price, timeToExpiry));
-    }
-
-    /**
-     * Find breakeven points for a strategy
-     * @param {Object} strategy - Strategy configuration
-     * @param {Array} legs - Array of option legs
-     * @param {number} currentPrice - Current stock price
-     * @returns {Array} - Array of breakeven prices
-     */
-    static findBreakevens(strategy, legs, currentPrice) {
+    // Calculate key metrics (max profit, max loss, breakevens)
+    calculateKeyMetrics(legs, marketParams) {
+        const currentPrice = marketParams.currentPrice;
+        const priceRange = [];
+        const step = currentPrice * 0.01; // 1% steps
+        
+        // Generate price range from 50% below to 50% above current price
+        for (let price = currentPrice * 0.5; price <= currentPrice * 1.5; price += step) {
+            priceRange.push(price);
+        }
+        
+        const pls = this.calculateStrategyPL(legs, priceRange, {
+            ...marketParams,
+            timeToExpiration: 0 // At expiration for key metrics
+        });
+        
+        const maxProfit = Math.max(...pls);
+        const maxLoss = Math.min(...pls);
+        
+        // Find breakeven points (where P&L crosses zero)
         const breakevens = [];
-        const priceRange = this.generatePriceRange(currentPrice);
-        const profits = this.calculateProfitLossArray(strategy, legs, priceRange, 0);
-
-        for (let i = 1; i < profits.length; i++) {
-            if ((profits[i-1] <= 0 && profits[i] >= 0) || (profits[i-1] >= 0 && profits[i] <= 0)) {
-                // Linear interpolation to find more precise breakeven
-                const ratio = Math.abs(profits[i-1]) / (Math.abs(profits[i-1]) + Math.abs(profits[i]));
-                const breakeven = priceRange[i-1] + ratio * (priceRange[i] - priceRange[i-1]);
+        for (let i = 0; i < pls.length - 1; i++) {
+            if ((pls[i] <= 0 && pls[i + 1] >= 0) || (pls[i] >= 0 && pls[i + 1] <= 0)) {
+                // Linear interpolation to find exact breakeven
+                const ratio = Math.abs(pls[i]) / (Math.abs(pls[i]) + Math.abs(pls[i + 1]));
+                const breakeven = priceRange[i] + (priceRange[i + 1] - priceRange[i]) * ratio;
                 breakevens.push(breakeven);
             }
         }
-
-        return breakevens;
+        
+        // Calculate total cost (net premium paid/received)
+        const totalCost = legs.reduce((sum, leg) => {
+            if (leg.strike && leg.premium !== null && leg.quantity) {
+                const cost = leg.action === 'Buy' ? 
+                    leg.premium * leg.quantity * 100 : 
+                    -leg.premium * leg.quantity * 100;
+                return sum + cost;
+            }
+            return sum;
+        }, 0);
+        
+        return {
+            maxProfit: maxProfit === Infinity ? 'Unlimited' : maxProfit,
+            maxLoss: maxLoss === -Infinity ? 'Unlimited' : Math.abs(maxLoss),
+            breakevens: breakevens,
+            totalCost: totalCost
+        };
     }
 
-    /**
-     * Calculate maximum profit for a strategy
-     * @param {Object} strategy - Strategy configuration
-     * @param {Array} legs - Array of option legs
-     * @param {number} currentPrice - Current stock price
-     * @returns {number} - Maximum profit (or Infinity if unlimited)
-     */
-    static calculateMaxProfit(strategy, legs, currentPrice) {
-        const priceRange = this.generatePriceRange(currentPrice, 2);
-        const profits = this.calculateProfitLossArray(strategy, legs, priceRange, 0);
+    // Calculate combined Greeks for the entire strategy
+    calculateStrategyGreeks(legs, marketParams) {
+        let totalDelta = 0, totalGamma = 0, totalTheta = 0, totalVega = 0;
         
-        const maxProfit = Math.max(...profits);
-        
-        // Check if profit continues to increase at the edges (unlimited profit)
-        if (profits[profits.length - 1] > profits[profits.length - 2] && 
-            profits[profits.length - 1] === maxProfit) {
-            return Infinity;
-        }
-        
-        return maxProfit;
-    }
-
-    /**
-     * Calculate maximum loss for a strategy
-     * @param {Object} strategy - Strategy configuration
-     * @param {Array} legs - Array of option legs
-     * @param {number} currentPrice - Current stock price
-     * @returns {number} - Maximum loss (or -Infinity if unlimited)
-     */
-    static calculateMaxLoss(strategy, legs, currentPrice) {
-        const priceRange = this.generatePriceRange(currentPrice, 2);
-        const profits = this.calculateProfitLossArray(strategy, legs, priceRange, 0);
-        
-        const maxLoss = Math.min(...profits);
-        
-        // Check if loss continues to increase at the edges (unlimited loss)
-        if ((profits[0] < profits[1] && profits[0] === maxLoss) ||
-            (profits[profits.length - 1] < profits[profits.length - 2] && profits[profits.length - 1] === maxLoss)) {
-            return -Infinity;
-        }
-        
-        return maxLoss;
-    }
-
-    /**
-     * Generate a range of stock prices for analysis
-     * @param {number} currentPrice - Current stock price
-     * @param {number} rangeFactor - Factor to determine price range (default 1.5)
-     * @returns {Array} - Array of stock prices
-     */
-    static generatePriceRange(currentPrice, rangeFactor = 1.5) {
-        const minPrice = currentPrice * (2 - rangeFactor);
-        const maxPrice = currentPrice * rangeFactor;
-        const step = (maxPrice - minPrice) / 200;
-        
-        const prices = [];
-        for (let price = minPrice; price <= maxPrice; price += step) {
-            prices.push(Math.round(price * 100) / 100);
-        }
-        
-        return prices;
-    }
-
-    /**
-     * Calculate total premium paid/received for a strategy
-     * @param {Object} strategy - Strategy configuration
-     * @param {Array} legs - Array of option legs
-     * @returns {number} - Net premium (positive if paid, negative if received)
-     */
-    static calculateNetPremium(strategy, legs) {
-        let netPremium = 0;
-
-        legs.forEach((leg, index) => {
-            const strategyLeg = strategy.legs[index];
-            if (!strategyLeg || strategyLeg.type === 'stock') return;
-
-            if (strategyLeg.action === 'buy') {
-                netPremium += leg.premium * strategyLeg.quantity * 100;
-            } else if (strategyLeg.action === 'sell') {
-                netPremium -= leg.premium * strategyLeg.quantity * 100;
+        legs.forEach(leg => {
+            if (leg.strike && leg.premium !== null && leg.quantity) {
+                const { strike, quantity, action, type } = leg;
+                const { currentPrice, riskFreeRate, timeToExpiration, volatility } = marketParams;
+                
+                const isCall = type === 'Call';
+                const multiplier = action === 'Buy' ? 1 : -1;
+                
+                const metrics = this.blackScholes.calculateAllMetrics(
+                    currentPrice, strike, riskFreeRate, timeToExpiration, volatility, isCall
+                );
+                
+                totalDelta += metrics.delta * multiplier * quantity;
+                totalGamma += metrics.gamma * multiplier * quantity;
+                totalTheta += metrics.theta * multiplier * quantity;
+                totalVega += metrics.vega * multiplier * quantity;
             }
         });
-
-        return netPremium;
-    }
-
-    /**
-     * Generate default leg parameters based on strategy and current price
-     * @param {string} strategyKey - Strategy identifier
-     * @param {number} currentPrice - Current stock price
-     * @param {Object} marketParams - Market parameters (volatility, rate, etc.)
-     * @returns {Array} - Array of leg parameters
-     */
-    static generateDefaultLegs(strategyKey, currentPrice, marketParams) {
-        const strategy = this.getStrategy(strategyKey);
-        if (!strategy) return [];
-
-        const legs = [];
-        const timeToExpiry = marketParams.daysToExpiration / 365;
-
-        strategy.legs.forEach(strategyLeg => {
-            const leg = {
-                action: strategyLeg.action,
-                type: strategyLeg.type,
-                quantity: strategyLeg.quantity,
-                riskFreeRate: marketParams.riskFreeRate / 100,
-                volatility: marketParams.volatility / 100
-            };
-
-            if (strategyLeg.type === 'stock') {
-                leg.costBasis = currentPrice;
-            } else {
-                // Calculate strike price
-                const strikeOffset = strategyLeg.strikeOffset || 0;
-                leg.strike = Math.round(currentPrice + strikeOffset);
-
-                // Calculate premium using Black-Scholes
-                leg.premium = BlackScholes.getOptionPrice({
-                    type: strategyLeg.type,
-                    strike: leg.strike,
-                    timeToExpiry: timeToExpiry,
-                    riskFreeRate: leg.riskFreeRate,
-                    volatility: leg.volatility
-                }, currentPrice, timeToExpiry);
-
-                leg.premium = Math.round(leg.premium * 100) / 100;
-            }
-
-            legs.push(leg);
-        });
-
-        return legs;
-    }
-
-    /**
-     * Validate strategy configuration
-     * @param {Object} strategy - Strategy configuration
-     * @param {Array} legs - Array of option legs
-     * @returns {Object} - Validation result with isValid flag and errors array
-     */
-    static validateStrategy(strategy, legs) {
-        const errors = [];
         
-        if (!strategy) {
-            errors.push('Invalid strategy selected');
-            return { isValid: false, errors };
-        }
-
-        if (legs.length !== strategy.legs.length) {
-            errors.push('Number of legs does not match strategy requirements');
-        }
-
-        legs.forEach((leg, index) => {
-            const strategyLeg = strategy.legs[index];
-            if (!strategyLeg) return;
-
-            if (strategyLeg.type !== 'stock') {
-                if (!leg.strike || leg.strike <= 0) {
-                    errors.push(`Leg ${index + 1}: Invalid strike price`);
-                }
-                if (!leg.premium || leg.premium < 0) {
-                    errors.push(`Leg ${index + 1}: Invalid premium`);
-                }
-            }
-        });
-
-        return { isValid: errors.length === 0, errors };
+        return {
+            delta: totalDelta,
+            gamma: totalGamma,
+            theta: totalTheta,
+            vega: totalVega
+        };
     }
 }
 
-// Export for use in other modules
+// Export for use in other files
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = OptionsStrategies;
+} else {
+    window.OptionsStrategies = OptionsStrategies;
 }
