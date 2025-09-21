@@ -1,476 +1,402 @@
-/**
- * Main Application for Options Profit Calculator
- * Coordinates UI interactions, calculations, and chart updates
- */
+// Main Application Logic
 
-class OptionsCalculatorApp {
+class OptionsCalculator {
     constructor() {
-        this.chartManager = new ChartManager();
-        this.currentStrategy = null;
+        this.strategies = new OptionsStrategies();
+        this.chart = null;
         this.currentLegs = [];
-        this.marketParams = {
-            currentPrice: 100,
-            volatility: 25,
-            riskFreeRate: 5,
-            daysToExpiration: 30
-        };
         
-        this.initializeApp();
+        this.init();
     }
 
-    /**
-     * Initialize the application
-     */
-    initializeApp() {
-        this.bindEventListeners();
-        this.initializeChart();
-        this.loadDefaultStrategy();
-        this.updateCalculations();
+    init() {
+        this.setupEventListeners();
+        this.updateStrategyDisplay();
+        this.updateLegsDisplay();
+        this.setupChart();
     }
 
-    /**
-     * Bind all event listeners
-     */
-    bindEventListeners() {
-        // Strategy selection
-        document.getElementById('strategySelect').addEventListener('change', (e) => {
-            this.onStrategyChange(e.target.value);
+    setupEventListeners() {
+        // Strategy selection change
+        document.getElementById('strategy').addEventListener('change', () => {
+            this.updateStrategyDisplay();
+            this.updateLegsDisplay();
+            this.calculateAndUpdate();
         });
 
-        // Market parameter inputs
-        ['currentPrice', 'volatility', 'riskFreeRate', 'daysToExpiration'].forEach(param => {
-            const element = document.getElementById(param);
-            if (element) {
-                element.addEventListener('input', (e) => {
-                    this.onMarketParamChange(param, parseFloat(e.target.value) || 0);
-                });
-            }
+        // Market parameter changes
+        ['stockPrice', 'volatility', 'riskFreeRate', 'daysToExpiration'].forEach(id => {
+            document.getElementById(id).addEventListener('input', () => {
+                this.debounce(() => {
+                    this.updateLegsDisplay(); // Update default strikes when stock price changes
+                    this.calculateAndUpdate();
+                }, 300);
+            });
         });
 
         // Calculate button
-        document.getElementById('calculateBtn').addEventListener('click', () => {
-            this.updateCalculations();
-        });
-
-        // Chart toggle buttons
-        document.getElementById('toggleExpiry').addEventListener('click', () => {
-            this.toggleChartView(false);
-        });
-
-        document.getElementById('toggleCurrent').addEventListener('click', () => {
-            this.toggleChartView(true);
-        });
-
-        // Auto-calculation on input changes
-        document.addEventListener('input', (e) => {
-            if (e.target.closest('.options-leg')) {
-                this.debouncedUpdate();
-            }
-        });
-
-        // Window resize handler
-        window.addEventListener('resize', () => {
-            this.chartManager.resize();
+        document.getElementById('calculate-btn').addEventListener('click', () => {
+            this.calculateAndUpdate();
         });
     }
 
-    /**
-     * Initialize the chart
-     */
-    initializeChart() {
-        this.chartManager.initialize('profitChart');
-    }
-
-    /**
-     * Load default strategy
-     */
-    loadDefaultStrategy() {
-        this.onStrategyChange('long-call');
-    }
-
-    /**
-     * Handle strategy selection change
-     * @param {string} strategyKey - Selected strategy key
-     */
-    onStrategyChange(strategyKey) {
-        const strategy = OptionsStrategies.getStrategy(strategyKey);
-        if (!strategy) return;
-
-        this.currentStrategy = strategy;
-        this.updateStrategyDescription(strategy);
-        this.generateStrategyLegs(strategyKey);
-        this.updateCalculations();
-    }
-
-    /**
-     * Handle market parameter changes
-     * @param {string} param - Parameter name
-     * @param {number} value - New value
-     */
-    onMarketParamChange(param, value) {
-        this.marketParams[param] = value;
+    updateStrategyDisplay() {
+        const strategyKey = document.getElementById('strategy').value;
+        const strategy = this.strategies.getStrategy(strategyKey);
         
-        // Regenerate legs with new market parameters
-        if (this.currentStrategy) {
-            const strategyKey = document.getElementById('strategySelect').value;
-            this.generateStrategyLegs(strategyKey);
-        }
-        
-        this.debouncedUpdate();
-    }
-
-    /**
-     * Update strategy description
-     * @param {Object} strategy - Strategy object
-     */
-    updateStrategyDescription(strategy) {
-        const descriptionElement = document.getElementById('strategyText');
-        if (descriptionElement) {
-            descriptionElement.innerHTML = `
-                <strong>${strategy.name}</strong><br>
-                ${strategy.description}<br>
-                <div class="mt-2 flex items-center space-x-4">
-                    <span class="complexity-${strategy.complexity}">
-                        <i class="fas fa-layer-group mr-1"></i>${strategy.complexity.charAt(0).toUpperCase() + strategy.complexity.slice(1)}
+        if (strategy) {
+            const descriptionDiv = document.getElementById('strategy-description');
+            descriptionDiv.innerHTML = `
+                <div class="mb-2">
+                    <span class="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full mr-2">
+                        ${strategy.complexity}
                     </span>
-                    <span class="risk-${strategy.riskLevel}">
-                        <i class="fas fa-exclamation-triangle mr-1"></i>Risk: ${strategy.riskLevel.charAt(0).toUpperCase() + strategy.riskLevel.slice(1)}
+                    <span class="inline-block px-2 py-1 bg-${this.getRiskColor(strategy.riskLevel)}-100 text-${this.getRiskColor(strategy.riskLevel)}-800 text-xs font-semibold rounded-full">
+                        ${strategy.riskLevel} Risk
                     </span>
                 </div>
+                <p>${strategy.description}</p>
             `;
         }
     }
 
-    /**
-     * Generate strategy legs UI
-     * @param {string} strategyKey - Strategy key
-     */
-    generateStrategyLegs(strategyKey) {
-        const strategy = OptionsStrategies.getStrategy(strategyKey);
-        if (!strategy) return;
+    getRiskColor(riskLevel) {
+        switch (riskLevel.toLowerCase()) {
+            case 'low': return 'green';
+            case 'medium': return 'yellow';
+            case 'high': return 'red';
+            default: return 'gray';
+        }
+    }
 
-        // Generate default legs
-        this.currentLegs = OptionsStrategies.generateDefaultLegs(
-            strategyKey, 
-            this.marketParams.currentPrice, 
-            this.marketParams
-        );
-
-        const container = document.getElementById('optionsLegs');
+    updateLegsDisplay() {
+        const strategyKey = document.getElementById('strategy').value;
+        const currentPrice = parseFloat(document.getElementById('stockPrice').value) || 100;
+        const strategy = this.strategies.setDefaultStrikes(strategyKey, currentPrice);
+        
+        const container = document.getElementById('legs-container');
         container.innerHTML = '';
 
-        this.currentLegs.forEach((leg, index) => {
-            const legElement = this.createLegElement(leg, index, strategy.legs[index]);
-            container.appendChild(legElement);
-        });
-    }
+        if (!strategy) return;
 
-    /**
-     * Create a leg input element
-     * @param {Object} leg - Leg data
-     * @param {number} index - Leg index
-     * @param {Object} strategyLeg - Strategy leg configuration
-     * @returns {HTMLElement} - Leg element
-     */
-    createLegElement(leg, index, strategyLeg) {
-        const div = document.createElement('div');
-        div.className = 'options-leg';
-        div.dataset.legIndex = index;
-
-        let legHTML = `
-            <div class="flex items-center justify-between mb-3">
-                <h4 class="font-semibold text-gray-800">
-                    <i class="fas fa-${this.getLegIcon(strategyLeg)} mr-2"></i>
-                    Leg ${index + 1}: ${this.getLegDescription(strategyLeg)}
-                </h4>
-                <span class="text-xs px-2 py-1 bg-gray-200 rounded">
-                    ${strategyLeg.action.toUpperCase()} ${strategyLeg.quantity}x
-                </span>
-            </div>
-        `;
-
-        if (strategyLeg.type === 'stock') {
-            legHTML += `
-                <div class="grid grid-cols-2 gap-3">
+        strategy.legs.forEach((leg, index) => {
+            const legDiv = document.createElement('div');
+            legDiv.className = 'mb-4 p-4 border border-gray-200 rounded-lg bg-gray-50';
+            
+            legDiv.innerHTML = `
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Shares</label>
-                        <input type="number" value="${strategyLeg.quantity}" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" readonly>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Leg ${index + 1}</label>
+                        <div class="text-sm text-gray-600">${leg.action} ${leg.type}</div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Cost Basis ($)</label>
-                        <input type="number" id="costBasis_${index}" value="${leg.costBasis}" step="0.01" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
-                    </div>
-                </div>
-            `;
-        } else {
-            legHTML += `
-                <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Strike ($)</label>
-                        <input type="number" id="strike_${index}" value="${leg.strike}" step="0.01" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                        <input type="number" class="leg-strike w-full p-2 border border-gray-300 rounded input-focus" 
+                               value="${leg.defaultStrike}" step="0.01" data-leg="${index}">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Premium ($)</label>
-                        <input type="number" id="premium_${index}" value="${leg.premium}" step="0.01" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                        <input type="number" class="leg-premium w-full p-2 border border-gray-300 rounded input-focus" 
+                               value="${leg.defaultPremium}" step="0.01" data-leg="${index}" placeholder="Enter premium">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
+                        <input type="number" class="leg-quantity w-full p-2 border border-gray-300 rounded input-focus" 
+                               value="${leg.quantity}" min="1" data-leg="${index}">
+                    </div>
+                    <div class="flex items-end">
+                        <button class="calc-premium-btn w-full bg-gray-600 hover:bg-gray-700 text-white text-sm py-2 px-3 rounded transition-colors" 
+                                data-leg="${index}">
+                            Calc Premium
+                        </button>
                     </div>
                 </div>
-                <div class="mt-2 text-xs text-gray-500">
-                    ${strategyLeg.type.charAt(0).toUpperCase() + strategyLeg.type.slice(1)} Option • 
-                    IV: ${(leg.volatility * 100).toFixed(1)}% • 
-                    ${this.marketParams.daysToExpiration} DTE
-                </div>
             `;
-        }
-
-        div.innerHTML = legHTML;
-        return div;
-    }
-
-    /**
-     * Get icon for leg type
-     * @param {Object} strategyLeg - Strategy leg configuration
-     * @returns {string} - Icon class
-     */
-    getLegIcon(strategyLeg) {
-        if (strategyLeg.type === 'stock') return 'chart-line';
-        if (strategyLeg.type === 'call') return 'arrow-up';
-        if (strategyLeg.type === 'put') return 'arrow-down';
-        return 'circle';
-    }
-
-    /**
-     * Get description for leg
-     * @param {Object} strategyLeg - Strategy leg configuration
-     * @returns {string} - Leg description
-     */
-    getLegDescription(strategyLeg) {
-        if (strategyLeg.type === 'stock') {
-            return `${strategyLeg.action === 'own' ? 'Own' : 'Short'} Stock`;
-        }
-        return `${strategyLeg.action === 'buy' ? 'Long' : 'Short'} ${strategyLeg.type.charAt(0).toUpperCase() + strategyLeg.type.slice(1)}`;
-    }
-
-    /**
-     * Update all calculations and displays
-     */
-    updateCalculations() {
-        this.updateLegsFromInputs();
-        
-        if (!this.currentStrategy || this.currentLegs.length === 0) return;
-
-        // Validate strategy
-        const validation = OptionsStrategies.validateStrategy(this.currentStrategy, this.currentLegs);
-        if (!validation.isValid) {
-            console.error('Strategy validation failed:', validation.errors);
-            return;
-        }
-
-        // Generate price range for analysis
-        const priceRange = OptionsStrategies.generatePriceRange(this.marketParams.currentPrice);
-        const timeToExpiry = this.marketParams.daysToExpiration / 365;
-
-        // Calculate profit/loss arrays
-        const expirationPL = OptionsStrategies.calculateProfitLossArray(
-            this.currentStrategy, this.currentLegs, priceRange, 0
-        );
-        
-        const currentPL = OptionsStrategies.calculateProfitLossArray(
-            this.currentStrategy, this.currentLegs, priceRange, timeToExpiry
-        );
-
-        // Calculate key metrics
-        const maxProfit = OptionsStrategies.calculateMaxProfit(
-            this.currentStrategy, this.currentLegs, this.marketParams.currentPrice
-        );
-        
-        const maxLoss = OptionsStrategies.calculateMaxLoss(
-            this.currentStrategy, this.currentLegs, this.marketParams.currentPrice
-        );
-        
-        const breakevens = OptionsStrategies.findBreakevens(
-            this.currentStrategy, this.currentLegs, this.marketParams.currentPrice
-        );
-
-        // Update displays
-        this.updateMetricsCards({ maxProfit, maxLoss, breakevens });
-        this.updateChart({ priceRange, expirationPL, currentPL, breakevens });
-        this.updateStrategyTable();
-    }
-
-    /**
-     * Update legs data from form inputs
-     */
-    updateLegsFromInputs() {
-        this.currentLegs.forEach((leg, index) => {
-            const strategyLeg = this.currentStrategy.legs[index];
             
-            if (strategyLeg.type === 'stock') {
-                const costBasisInput = document.getElementById(`costBasis_${index}`);
-                if (costBasisInput) {
-                    leg.costBasis = parseFloat(costBasisInput.value) || 0;
-                }
-            } else {
-                const strikeInput = document.getElementById(`strike_${index}`);
-                const premiumInput = document.getElementById(`premium_${index}`);
-                
-                if (strikeInput) {
-                    leg.strike = parseFloat(strikeInput.value) || 0;
-                }
-                if (premiumInput) {
-                    leg.premium = parseFloat(premiumInput.value) || 0;
-                }
-            }
+            container.appendChild(legDiv);
+        });
+
+        // Add event listeners for leg inputs
+        this.setupLegEventListeners();
+        this.updateCurrentLegs();
+    }
+
+    setupLegEventListeners() {
+        // Strike, premium, and quantity inputs
+        document.querySelectorAll('.leg-strike, .leg-premium, .leg-quantity').forEach(input => {
+            input.addEventListener('input', () => {
+                this.debounce(() => {
+                    this.updateCurrentLegs();
+                    this.calculateAndUpdate();
+                }, 300);
+            });
+        });
+
+        // Calculate premium buttons
+        document.querySelectorAll('.calc-premium-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const legIndex = parseInt(e.target.dataset.leg);
+                this.calculateTheoreticalPremium(legIndex);
+            });
         });
     }
 
-    /**
-     * Update metrics cards
-     * @param {Object} metrics - Calculated metrics
-     */
-    updateMetricsCards(metrics) {
-        const maxProfitEl = document.getElementById('maxProfit');
-        const maxLossEl = document.getElementById('maxLoss');
-        const breakevenEl = document.getElementById('breakeven');
+    updateCurrentLegs() {
+        const strategyKey = document.getElementById('strategy').value;
+        const strategy = this.strategies.getStrategy(strategyKey);
+        
+        if (!strategy) return;
 
-        if (maxProfitEl) {
-            maxProfitEl.textContent = this.formatCurrency(metrics.maxProfit);
-            maxProfitEl.className = `text-2xl font-bold ${this.getPLColorClass(metrics.maxProfit)}`;
-        }
-
-        if (maxLossEl) {
-            maxLossEl.textContent = this.formatCurrency(metrics.maxLoss);
-            maxLossEl.className = `text-2xl font-bold ${this.getPLColorClass(metrics.maxLoss)}`;
-        }
-
-        if (breakevenEl) {
-            if (metrics.breakevens.length === 0) {
-                breakevenEl.textContent = 'None';
-                breakevenEl.className = 'text-2xl font-bold text-gray-500';
-            } else if (metrics.breakevens.length === 1) {
-                breakevenEl.textContent = `$${metrics.breakevens[0].toFixed(2)}`;
-                breakevenEl.className = 'text-2xl font-bold text-warning';
-            } else {
-                breakevenEl.textContent = `${metrics.breakevens.length} points`;
-                breakevenEl.className = 'text-2xl font-bold text-warning';
-                breakevenEl.title = metrics.breakevens.map(be => `$${be.toFixed(2)}`).join(', ');
-            }
-        }
-    }
-
-    /**
-     * Update chart with new data
-     * @param {Object} data - Chart data
-     */
-    updateChart(data) {
-        const chartData = {
-            stockPrices: data.priceRange,
-            expirationPL: data.expirationPL,
-            currentPL: data.currentPL,
-            breakevens: data.breakevens,
-            currentStockPrice: this.marketParams.currentPrice
-        };
-
-        this.chartManager.updateChart(chartData);
-    }
-
-    /**
-     * Update strategy details table
-     */
-    updateStrategyTable() {
-        const tbody = document.getElementById('strategyTableBody');
-        if (!tbody) return;
-
-        tbody.innerHTML = '';
-
-        this.currentLegs.forEach((leg, index) => {
-            const strategyLeg = this.currentStrategy.legs[index];
-            const row = tbody.insertRow();
+        this.currentLegs = strategy.legs.map((leg, index) => {
+            const strikeInput = document.querySelector(`.leg-strike[data-leg="${index}"]`);
+            const premiumInput = document.querySelector(`.leg-premium[data-leg="${index}"]`);
+            const quantityInput = document.querySelector(`.leg-quantity[data-leg="${index}"]`);
             
-            row.innerHTML = `
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${index + 1}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${this.getActionBadgeClass(strategyLeg.action)}">
-                        ${strategyLeg.action.toUpperCase()}
-                    </span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${strategyLeg.type.charAt(0).toUpperCase() + strategyLeg.type.slice(1)}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    ${strategyLeg.type === 'stock' ? 'N/A' : `$${leg.strike}`}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    ${strategyLeg.type === 'stock' ? `$${leg.costBasis}` : `$${leg.premium}`}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${strategyLeg.quantity}</td>
-            `;
+            return {
+                action: leg.action,
+                type: leg.type,
+                strike: parseFloat(strikeInput?.value) || 0,
+                premium: parseFloat(premiumInput?.value) || 0,
+                quantity: parseInt(quantityInput?.value) || 1
+            };
         });
     }
 
-    /**
-     * Toggle chart view between current and expiry
-     * @param {boolean} showCurrent - Show current value line
-     */
-    toggleChartView(showCurrent) {
-        this.chartManager.toggleCurrentValue(showCurrent);
+    calculateTheoreticalPremium(legIndex) {
+        const leg = this.currentLegs[legIndex];
+        if (!leg || !leg.strike) return;
+
+        const marketParams = this.getMarketParams();
+        const isCall = leg.type === 'Call';
         
-        // Update button states
-        const expiryBtn = document.getElementById('toggleExpiry');
-        const currentBtn = document.getElementById('toggleCurrent');
-        
-        if (showCurrent) {
-            currentBtn.className = 'px-3 py-1 text-sm bg-primary text-white rounded hover:bg-blue-600 transition-colors';
-            expiryBtn.className = 'px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors';
+        let theoreticalPrice;
+        if (isCall) {
+            theoreticalPrice = this.strategies.blackScholes.calculateCallPrice(
+                marketParams.currentPrice,
+                leg.strike,
+                marketParams.riskFreeRate,
+                marketParams.timeToExpiration,
+                marketParams.volatility
+            );
         } else {
-            expiryBtn.className = 'px-3 py-1 text-sm bg-primary text-white rounded hover:bg-blue-600 transition-colors';
-            currentBtn.className = 'px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors';
+            theoreticalPrice = this.strategies.blackScholes.calculatePutPrice(
+                marketParams.currentPrice,
+                leg.strike,
+                marketParams.riskFreeRate,
+                marketParams.timeToExpiration,
+                marketParams.volatility
+            );
+        }
+
+        // Update the premium input
+        const premiumInput = document.querySelector(`.leg-premium[data-leg="${legIndex}"]`);
+        if (premiumInput) {
+            premiumInput.value = theoreticalPrice.toFixed(2);
+            this.updateCurrentLegs();
+            this.calculateAndUpdate();
         }
     }
 
-    /**
-     * Get CSS class for profit/loss color
-     * @param {number} value - P&L value
-     * @returns {string} - CSS class
-     */
-    getPLColorClass(value) {
-        if (value > 0) return 'text-success';
-        if (value < 0) return 'text-danger';
-        return 'text-warning';
+    getMarketParams() {
+        const stockPrice = parseFloat(document.getElementById('stockPrice').value) || 100;
+        const volatility = (parseFloat(document.getElementById('volatility').value) || 25) / 100;
+        const riskFreeRate = (parseFloat(document.getElementById('riskFreeRate').value) || 5) / 100;
+        const daysToExpiration = parseInt(document.getElementById('daysToExpiration').value) || 30;
+        const timeToExpiration = daysToExpiration / 365;
+
+        return {
+            currentPrice: stockPrice,
+            volatility: volatility,
+            riskFreeRate: riskFreeRate,
+            timeToExpiration: timeToExpiration,
+            daysToExpiration: daysToExpiration
+        };
     }
 
-    /**
-     * Get badge class for action
-     * @param {string} action - Action type
-     * @returns {string} - CSS class
-     */
-    getActionBadgeClass(action) {
-        switch (action) {
-            case 'buy': return 'bg-green-100 text-green-800';
-            case 'sell': return 'bg-red-100 text-red-800';
-            case 'own': return 'bg-blue-100 text-blue-800';
-            default: return 'bg-gray-100 text-gray-800';
+    calculateAndUpdate() {
+        if (this.currentLegs.length === 0) return;
+
+        const marketParams = this.getMarketParams();
+        
+        // Generate price range for chart
+        const priceRange = [];
+        const step = marketParams.currentPrice * 0.02; // 2% steps
+        for (let price = marketParams.currentPrice * 0.7; price <= marketParams.currentPrice * 1.3; price += step) {
+            priceRange.push(price);
         }
+
+        // Calculate P&L at expiration
+        const plAtExpiration = this.strategies.calculateStrategyPL(this.currentLegs, priceRange, {
+            ...marketParams,
+            timeToExpiration: 0
+        });
+
+        // Calculate current P&L (before expiration)
+        const plCurrent = this.strategies.calculateStrategyPL(this.currentLegs, priceRange, marketParams);
+
+        // Update chart
+        this.updateChart(priceRange, plAtExpiration, plCurrent, marketParams.currentPrice);
+
+        // Calculate and display key metrics
+        const keyMetrics = this.strategies.calculateKeyMetrics(this.currentLegs, marketParams);
+        this.updateKeyMetrics(keyMetrics);
+
+        // Calculate and display Greeks
+        const greeks = this.strategies.calculateStrategyGreeks(this.currentLegs, marketParams);
+        this.updateGreeks(greeks);
     }
 
-    /**
-     * Format currency for display
-     * @param {number} value - Currency value
-     * @returns {string} - Formatted string
-     */
-    formatCurrency(value) {
-        return this.chartManager.formatCurrency(value);
+    setupChart() {
+        const ctx = document.getElementById('plChart').getContext('2d');
+        this.chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: 'P&L at Expiration',
+                        data: [],
+                        borderColor: 'rgb(59, 130, 246)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 3,
+                        fill: false,
+                        tension: 0.1
+                    },
+                    {
+                        label: 'Current P&L',
+                        data: [],
+                        borderColor: 'rgb(34, 197, 94)',
+                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        fill: false,
+                        tension: 0.1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                },
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': $' + context.parsed.y.toFixed(2);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Stock Price ($)'
+                        },
+                        grid: {
+                            display: true,
+                            color: 'rgba(0, 0, 0, 0.1)'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'Profit/Loss ($)'
+                        },
+                        grid: {
+                            display: true,
+                            color: 'rgba(0, 0, 0, 0.1)'
+                        }
+                    }
+                },
+                elements: {
+                    point: {
+                        radius: 0,
+                        hoverRadius: 6
+                    }
+                }
+            }
+        });
     }
 
-    /**
-     * Debounced update function
-     */
-    debouncedUpdate() {
-        clearTimeout(this.updateTimeout);
-        this.updateTimeout = setTimeout(() => {
-            this.updateCalculations();
-        }, 300);
+    updateChart(priceRange, plAtExpiration, plCurrent, currentPrice) {
+        if (!this.chart) return;
+
+        const labels = priceRange.map(price => price.toFixed(0));
+        
+        this.chart.data.labels = labels;
+        this.chart.data.datasets[0].data = plAtExpiration;
+        this.chart.data.datasets[1].data = plCurrent;
+        
+        // Add breakeven line (y=0)
+        this.chart.options.plugins.annotation = {
+            annotations: {
+                breakeven: {
+                    type: 'line',
+                    yMin: 0,
+                    yMax: 0,
+                    borderColor: 'rgb(239, 68, 68)',
+                    borderWidth: 1,
+                    borderDash: [10, 5],
+                    label: {
+                        content: 'Breakeven',
+                        enabled: true,
+                        position: 'end'
+                    }
+                },
+                currentPrice: {
+                    type: 'line',
+                    xMin: currentPrice.toFixed(0),
+                    xMax: currentPrice.toFixed(0),
+                    borderColor: 'rgb(168, 85, 247)',
+                    borderWidth: 2,
+                    label: {
+                        content: 'Current Price',
+                        enabled: true,
+                        position: 'start'
+                    }
+                }
+            }
+        };
+        
+        this.chart.update();
+    }
+
+    updateKeyMetrics(metrics) {
+        document.getElementById('max-profit').textContent = 
+            typeof metrics.maxProfit === 'number' ? `$${metrics.maxProfit.toFixed(2)}` : metrics.maxProfit;
+            
+        document.getElementById('max-loss').textContent = 
+            typeof metrics.maxLoss === 'number' ? `$${metrics.maxLoss.toFixed(2)}` : metrics.maxLoss;
+            
+        document.getElementById('breakeven').textContent = 
+            metrics.breakevens.length > 0 ? 
+                metrics.breakevens.map(be => `$${be.toFixed(2)}`).join(', ') : 'None';
+                
+        document.getElementById('total-cost').textContent = `$${metrics.totalCost.toFixed(2)}`;
+    }
+
+    updateGreeks(greeks) {
+        document.getElementById('delta').textContent = greeks.delta.toFixed(3);
+        document.getElementById('gamma').textContent = greeks.gamma.toFixed(4);
+        document.getElementById('theta').textContent = greeks.theta.toFixed(3);
+        document.getElementById('vega').textContent = greeks.vega.toFixed(3);
+    }
+
+    // Debounce function for performance
+    debounce(func, wait) {
+        clearTimeout(this.debounceTimer);
+        this.debounceTimer = setTimeout(func, wait);
     }
 }
 
 // Initialize the application when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    new OptionsCalculatorApp();
+    new OptionsCalculator();
 });
