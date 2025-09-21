@@ -1,0 +1,37 @@
+{
+  "name": "options-profit-calculator",
+  "version": "1.0.0",
+  "description": "A comprehensive options profit calculator with support for all major trading strategies",
+  "main": "index.html",
+  "scripts": {
+    "dev": "npx serve .",
+    "build": "echo 'Static site - no build required'",
+    "start": "npx serve .",
+    "test": "echo 'No tests specified'"
+  },
+  "keywords": [
+    "options",
+    "trading",
+    "profit",
+    "calculator",
+    "finance",
+    "black-scholes",
+    "options-strategies"
+  ],
+  "author": "Options Calculator Team",
+  "license": "MIT",
+  "devDependencies": {
+    "serve": "^14.2.1"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/options-profit-calculator.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/options-profit-calculator/issues"
+  },
+  "homepage": "https://options-profit-calculator.vercel.app"
+}
